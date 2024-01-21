@@ -6,11 +6,13 @@ const path = require("path");
 
 const app = express();
 app.use(cors());
-app.use(express.static("public"));
 const port = 3000;
 
 const publicFolder = "./public/Images";
-const imageNames = require("./Imagename.json");
+// const imageNames = require("./Imagename.json");
+app.use("/api", express.static(__dirname + "/public/Images"));
+
+
 
 app.get("/metadata", async (req, res) => {
   try {
@@ -33,45 +35,36 @@ app.get("/metadata", async (req, res) => {
 
     const tags = await exiftool.read(imagePath);
 
-    res.json({ metadata: tags, imageUrl: `/image?image=${imageName}` });
+    res.json({
+      metadata: [
+        { Lens: tags.LensModel || "NA" },
+        { LensAF: tags.Lens || "NA" },
+        { Capture: tags.DateTimeOriginal.rawValue || "NA" },
+        { ISO: tags.ISO || "NA" },
+        { speed: tags.ShutterSpeed || "NA" },
+        { Aperture: tags.Aperture || "NA" },
+        { FileName: tags.FileName || "NA" },
+        { ImageSize: tags.ImageHeight + "X" + tags.ImageWidth || 0 },
+        { whitebalance: tags.WhiteBalance || "NA" },
+        { rating: tags.Rating || "NA" },
+        { color: tags.ColorSpace || "NA" },
+        { camera: tags.Model || "NA" },
+      ],
+      imageUrl: `/image?image=${imageName}`,
+    });
   } catch (error) {
     console.error("Error extracting metadata:", error);
     res.status(500).json({ error: "Failed to extract metadata" });
   }
 });
 
-app.get("/images", async (req, res) => {
-  try {
-    if (!Array.isArray(imageNames)) {
-      return res.status(400).json({ error: "Invalid JSON file format" });
-    }
 
-    const imageDetails = [];
+//
+//         const uniqueIdentifier = Date.now() + Math.floor(Math.random() * 1000);
+//         const outputJpgPath = path.join(publicFolder, `${uniqueIdentifier}.jpg`);
+//         await exiftool.extractPreview(imagePath, outputJpgPath);
 
-    for (const imageName of imageNames) {
-      const imagePath = path.join(publicFolder, imageName);
 
-      try {
-        await fs.access(imagePath);
-        imageDetails.push({
-          name: imageName,
-          path: path.join(__dirname, imagePath),
-        });
-      } catch (error) {
-        console.error(`Image not found: ${imageName}`);
-      }
-    }
-
-    if (imageDetails.length === 0) {
-      return res.status(404).json({ error: "No images found" });
-    }
-
-    res.json({ imageDetails });
-  } catch (error) {
-    console.error("Error processing images:", error);
-    res.status(500).json({ error: "Failed to process images" });
-  }
-});
 
 app.listen(port, () => {
   console.log(`Server is running at http://localhost:${port}`);
